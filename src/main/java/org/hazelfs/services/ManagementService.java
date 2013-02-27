@@ -10,8 +10,10 @@ public interface ManagementService {
 	public void startNode(String id) throws IOException;
 
 	public void shutdownAllNodes();
-	
+
 	public void shutdownNode(String id);
-	
-	public Map<String,Node> getLocalNodes();
+
+	public Map<String, Node> getLocalNodes();
+
+	public StorageService getStorageService();
 }

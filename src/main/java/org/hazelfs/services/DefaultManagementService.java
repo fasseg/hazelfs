@@ -24,10 +24,14 @@ public class DefaultManagementService implements ManagementService {
 	@Autowired
 	@Qualifier("hazelCastConfig")
 	private Config hazelCastConfig;
+	
+	@Autowired
+	@Qualifier("storageService")
+	private StorageService storageService;
 
 	private Map<String, HazelcastInstance> localHCInstances = new HashMap<String, HazelcastInstance>();
 	private Map<String, Node> localNodes = new HashMap<String, Node>();
-	private Map<String, TCPService> localTCPServices = new HashMap<String, TCPService>();
+	private Map<String, TCPListenerService> localTCPServices = new HashMap<String, TCPListenerService>();
 
 	public void startNode(String id) throws IOException {
 		LOG.debug("starting new hazelcast instance");
@@ -47,8 +51,8 @@ public class DefaultManagementService implements ManagementService {
 		LOG.info("starting hazefs node at " + u.toASCIIString());
 		Node n = new Node(id, u);
 		// start the TCP service for this node
-		TCPService tcp = new TCPService(port);
-		Thread t = new Thread(tcp,"hazelfs-tcp-service");
+		TCPListenerService tcp = new TCPListenerService(port, storageService);
+		Thread t = new Thread(tcp, "hazelfs-tcp-service");
 		t.start();
 		localTCPServices.put(id, tcp);
 		return n;
@@ -78,11 +82,11 @@ public class DefaultManagementService implements ManagementService {
 		// remove the node from the maps
 		localNodes.remove(id);
 		instance.getMap(ManagementService.NODE_MAP_NAME).remove(id);
-		
-		//Stop the TCP Service for the Node 
-		TCPService service = localTCPServices.get(id);
+
+		// Stop the TCP Service for the Node
+		TCPListenerService service = localTCPServices.get(id);
 		service.shutdown();
-		
+
 		// remove the HazelCast instances from the map and stop them
 		localHCInstances.remove(id);
 		instance.getLifecycleService().shutdown();
@@ -99,6 +103,10 @@ public class DefaultManagementService implements ManagementService {
 	@Override
 	public Map<String, Node> getLocalNodes() {
 		return localNodes;
+	}
+	@Override
+	public StorageService getStorageService() {
+		return storageService;
 	}
 
 }

@@ -16,7 +16,11 @@
 			</bean>
 		</property>
 	</bean>
-
+	
+	<bean id="storageService" class="org.hazelfs.services.PosixStorageService" init-method="initStorage">
+		<constructor-arg index="0" type="java.lang.String" value="/tmp/hazefs"/>
+	</bean>
+	
 	<context:annotation-config />
 	<context:component-scan base-package="org.hazelfs" />
 </beans>
