@@ -5,7 +5,10 @@ import java.net.Inet4Address;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
+import org.hazelfs.networking.HazelFSListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +34,8 @@ public class DefaultManagementService implements ManagementService {
 
 	private Map<String, HazelcastInstance> localHCInstances = new HashMap<String, HazelcastInstance>();
 	private Map<String, Node> localNodes = new HashMap<String, Node>();
-	private Map<String, TCPListenerService> localTCPServices = new HashMap<String, TCPListenerService>();
+	private Map<String, HazelFSListener> localTCPServices = new HashMap<String, HazelFSListener>();
+	private ExecutorService executor;
 
 	public void startNode(String id) throws IOException {
 		LOG.debug("starting new hazelcast instance");
@@ -51,9 +55,9 @@ public class DefaultManagementService implements ManagementService {
 		LOG.info("starting hazefs node at " + u.toASCIIString());
 		Node n = new Node(id, u);
 		// start the TCP service for this node
-		TCPListenerService tcp = new TCPListenerService(port, storageService);
-		Thread t = new Thread(tcp, "hazelfs-tcp-service");
-		t.start();
+		HazelFSListener tcp = new HazelFSListener(port, storageService);
+		this.executor = Executors.newSingleThreadExecutor();
+		executor.submit(tcp);
 		localTCPServices.put(id, tcp);
 		return n;
 	}
@@ -84,9 +88,12 @@ public class DefaultManagementService implements ManagementService {
 		instance.getMap(ManagementService.NODE_MAP_NAME).remove(id);
 
 		// Stop the TCP Service for the Node
-		TCPListenerService service = localTCPServices.get(id);
+		HazelFSListener service = localTCPServices.get(id);
 		service.shutdown();
-
+		
+		// wait 1 sec then crush it!
+		executor.shutdownNow();
+		
 		// remove the HazelCast instances from the map and stop them
 		localHCInstances.remove(id);
 		instance.getLifecycleService().shutdown();
